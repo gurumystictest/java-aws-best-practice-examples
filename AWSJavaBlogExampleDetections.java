@@ -131,4 +131,52 @@ public class CodeGuruJavaBestPracticeExamples {
             throw new SQSUpdateException("Error occurred while sending messages to SQS::" + failedMessage);
         }
     }
+    
+    public void handle(CleanPoolOfNonExistentIndicesParams params) {
+        private AmazonDynamoDB DDBClient;
+        private AWSkendra kendraClient;
+        final ScanRequest scanRequest = new ScanRequest().withTableName(INDEX_POOL_TABLE);
+        final ScanResult scanResult = DDBClient.scan(scanRequest);
+        final List<String> entriesToRemove = new ArrayList<>();
+        for (Map<String, AttributeValue> item : scanResult.getItems()) {
+            final String indexId = item.get(INDEX_ID_KEY).getS();
+            try {
+                kendraClient.describeIndex(new DescribeIndexRequest().withId(indexId));
+                log.info("Found index {}", indexId);
+            } catch (ResourceNotFoundException e) {
+                log.info("Index {} does not exist. Will remove from index pool table", indexId);
+                entriesToRemove.add(indexId);
+            }
+        }
+        entriesToRemove.forEach(id -> indexPoolTable.deleteItem(INDEX_ID_KEY, id));
+    }
+
+    public void handle(CleanPoolOfNonExistentIndicesParams params) {
+        private AmazonDynamoDB DDBClient;
+        private AWSkendra kendraClient;
+        final ScanRequest scanRequest = new ScanRequest().withTableName(INDEX_POOL_TABLE);
+        boolean moreResults = true;
+        final List<String> entriesToRemove = new ArrayList<>();
+
+        while (moreResults) {
+            final ScanResult scanResult = frontendDDBClient.scan(scanRequest);
+
+            for (Map<String, AttributeValue> item : scanResult.getItems()) {
+                final String indexId = item.get(INDEX_ID_KEY).getS();
+                try {
+                    kendraClient.describeIndex(new DescribeIndexRequest().withId(indexId));
+                    log.info("Found index {}", indexId);
+                } catch (ResourceNotFoundException e) {
+                    log.info("Index {} does not exist. Will remove from index pool table", indexId);
+                    entriesToRemove.add(indexId);
+                }
+            }
+            moreResults = scanResult.getLastEvaluatedKey() != null && !scanResult.getLastEvaluatedKey().isEmpty();
+            if (moreResults) {
+                log.info("More results detected, requesting next page.");
+                scanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
+            }
+        }
+        entriesToRemove.forEach(id -> indexPoolTable.deleteItem(INDEX_ID_KEY, id));
+    }
 }
