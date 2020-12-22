@@ -5,9 +5,12 @@ import com.amazonaws.SdkClientException;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
@@ -132,44 +135,33 @@ public class CodeGuruJavaBestPracticeExamples {
         }
     }
     
-    public void handle(CleanPoolOfNonExistentIndicesParams params) {
-        private AmazonDynamoDB DDBClient;
-        private AWSkendra kendraClient;
+    public void invoke_scan1() {
+        final AmazonDynamoDB DDBClient;
+        final String INDEX_POOL_TABLE = "index_table";
+        final String INDEX_ID_KEY = "IndexId";
         final ScanRequest scanRequest = new ScanRequest().withTableName(INDEX_POOL_TABLE);
         final ScanResult scanResult = DDBClient.scan(scanRequest);
         final List<String> entriesToRemove = new ArrayList<>();
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             final String indexId = item.get(INDEX_ID_KEY).getS();
-            try {
-                kendraClient.describeIndex(new DescribeIndexRequest().withId(indexId));
-                log.info("Found index {}", indexId);
-            } catch (ResourceNotFoundException e) {
-                log.info("Index {} does not exist. Will remove from index pool table", indexId);
-                entriesToRemove.add(indexId);
-            }
+            log.info("Found index {}", indexId);
+            
         }
         entriesToRemove.forEach(id -> indexPoolTable.deleteItem(INDEX_ID_KEY, id));
     }
 
-    public void handle(CleanPoolOfNonExistentIndicesParams params) {
-        private AmazonDynamoDB DDBClient;
-        private AWSkendra kendraClient;
+    public void invoke_scan2() {
+        final AmazonDynamoDB DDBClient;
+        final String INDEX_POOL_TABLE = "index_table";
+        final String INDEX_ID_KEY = "IndexId";
         final ScanRequest scanRequest = new ScanRequest().withTableName(INDEX_POOL_TABLE);
         boolean moreResults = true;
         final List<String> entriesToRemove = new ArrayList<>();
-
         while (moreResults) {
             final ScanResult scanResult = frontendDDBClient.scan(scanRequest);
-
             for (Map<String, AttributeValue> item : scanResult.getItems()) {
                 final String indexId = item.get(INDEX_ID_KEY).getS();
-                try {
-                    kendraClient.describeIndex(new DescribeIndexRequest().withId(indexId));
-                    log.info("Found index {}", indexId);
-                } catch (ResourceNotFoundException e) {
-                    log.info("Index {} does not exist. Will remove from index pool table", indexId);
-                    entriesToRemove.add(indexId);
-                }
+                log.info("Found index {}", indexId);
             }
             moreResults = scanResult.getLastEvaluatedKey() != null && !scanResult.getLastEvaluatedKey().isEmpty();
             if (moreResults) {
